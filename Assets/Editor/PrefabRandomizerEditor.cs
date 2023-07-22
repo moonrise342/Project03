@@ -5,7 +5,8 @@ using UnityEditor;
 
 public class PrefabRandomizerEditor : EditorWindow
 {
-    private GameObject[] prefabPool;
+    private SerializedObject serializedPrefabRandomizer;
+    private SerializedProperty prefabPoolProperty;
     private int numberOfInstances = 10;
     private Vector3 positionOffset = Vector3.zero;
     private Vector3 rotationOffset = Vector3.zero;
@@ -17,6 +18,13 @@ public class PrefabRandomizerEditor : EditorWindow
         GetWindow<PrefabRandomizerEditor>("Prefab Randomizer");
     }
 
+    private void OnEnable()
+    {
+        // Create a SerializedObject for the PrefabRandomizer script
+        serializedPrefabRandomizer = new SerializedObject(PrefabRandomizer.Instance);
+        prefabPoolProperty = serializedPrefabRandomizer.FindProperty("prefabPool");
+    }
+
     private void OnGUI()
     {
         EditorGUILayout.LabelField("Prefab Randomizer Tool", EditorStyles.boldLabel);
@@ -24,7 +32,9 @@ public class PrefabRandomizerEditor : EditorWindow
         EditorGUILayout.Space(10);
 
         EditorGUILayout.LabelField("Prefab Pool", EditorStyles.miniBoldLabel);
-        prefabPool = EditorGUILayout.ObjectField("Prefab Pool", prefabPool, typeof(GameObject[]), true) as GameObject[];
+        EditorGUILayout.PropertyField(prefabPoolProperty, true);
+
+        serializedPrefabRandomizer.ApplyModifiedProperties();
 
         EditorGUILayout.Space(10);
 
@@ -44,25 +54,6 @@ public class PrefabRandomizerEditor : EditorWindow
 
     private void RandomizePrefabs()
     {
-        if (prefabPool == null || prefabPool.Length == 0)
-        {
-            Debug.LogWarning("Prefab Pool is empty. Add prefabs to the pool.");
-            return;
-        }
-
-        for (int i = 0; i < numberOfInstances; i++)
-        {
-            GameObject prefabToInstantiate = prefabPool[Random.Range(0, prefabPool.Length)];
-            Vector3 randomPosition = Random.insideUnitSphere * 5f + positionOffset;
-            Vector3 randomRotation = rotationOffset;
-            Vector3 randomScale = new Vector3(Random.Range(0.5f, 1.5f) * scaleOffset.x,
-                                              Random.Range(0.5f, 1.5f) * scaleOffset.y,
-                                              Random.Range(0.5f, 1.5f) * scaleOffset.z);
-
-            GameObject instance = PrefabUtility.InstantiatePrefab(prefabToInstantiate) as GameObject;
-            instance.transform.position = randomPosition;
-            instance.transform.rotation = Quaternion.Euler(randomRotation);
-            instance.transform.localScale = randomScale;
-        }
+        PrefabRandomizer.Instance.Randomize(numberOfInstances, positionOffset, rotationOffset, scaleOffset);
     }
 }
