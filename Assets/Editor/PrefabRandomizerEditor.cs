@@ -1,16 +1,21 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+
 using UnityEditor;
+using UnityEngine;
 
 public class PrefabRandomizerEditor : EditorWindow
 {
-    private SerializedObject serializedPrefabRandomizer;
-    private SerializedProperty prefabPoolProperty;
-    private int numberOfInstances = 10;
-    private Vector3 positionOffset = Vector3.zero;
-    private Vector3 rotationOffset = Vector3.zero;
-    private Vector3 scaleOffset = Vector3.one;
+    [System.Serializable]
+    private class RandomizerSettings
+    {
+        public GameObject[] prefabPool = new GameObject[0];
+        public Vector3 scaleOffset = Vector3.one;
+        public Vector3 rotationOffset;
+        public Vector3 positionOffset;
+        public int numberOfInstances = 10;
+        public bool isRandomPosition = false;
+    }
+
+    private RandomizerSettings settings = new RandomizerSettings();
 
     [MenuItem("Tools/Prefab Randomizer")]
     public static void ShowWindow()
@@ -18,42 +23,76 @@ public class PrefabRandomizerEditor : EditorWindow
         GetWindow<PrefabRandomizerEditor>("Prefab Randomizer");
     }
 
-    private void OnEnable()
-    {
-        // Create a SerializedObject for the PrefabRandomizer script
-        serializedPrefabRandomizer = new SerializedObject(PrefabRandomizer.Instance);
-        prefabPoolProperty = serializedPrefabRandomizer.FindProperty("prefabPool");
-    }
-
     private void OnGUI()
     {
-        EditorGUILayout.LabelField("Prefab Randomizer Tool", EditorStyles.boldLabel);
-
-        EditorGUILayout.Space(10);
-
-        EditorGUILayout.LabelField("Prefab Pool", EditorStyles.miniBoldLabel);
-        EditorGUILayout.PropertyField(prefabPoolProperty, true);
-
-        serializedPrefabRandomizer.ApplyModifiedProperties();
-
-        EditorGUILayout.Space(10);
-
-        EditorGUILayout.LabelField("Randomization Settings", EditorStyles.miniBoldLabel);
-        numberOfInstances = EditorGUILayout.IntSlider("Number of Instances", numberOfInstances, 1, 100);
-        positionOffset = EditorGUILayout.Vector3Field("Position Offset", positionOffset);
-        rotationOffset = EditorGUILayout.Vector3Field("Rotation Offset", rotationOffset);
-        scaleOffset = EditorGUILayout.Vector3Field("Scale Offset", scaleOffset);
-
-        EditorGUILayout.Space(20);
-
-        if (GUILayout.Button("Randomize Prefabs"))
+        EditorGUILayout.LabelField("Prefab List:");
+        for (int i = 0; i < settings.prefabPool.Length; i++)
         {
-            RandomizePrefabs();
+            settings.prefabPool[i] = EditorGUILayout.ObjectField(settings.prefabPool[i], typeof(GameObject), false) as GameObject;
+        }
+
+        if (GUILayout.Button("Add Prefab"))
+        {
+            AddPrefabToArray();
+        }
+
+        if (GUILayout.Button("Remove Last Prefab"))
+        {
+            RemoveLastPrefabFromArray();
+        }
+
+        settings.isRandomPosition = EditorGUILayout.Toggle("Is Random Position", settings.isRandomPosition);
+        settings.positionOffset = EditorGUILayout.Vector3Field("Position Offset", settings.positionOffset);
+        settings.scaleOffset = EditorGUILayout.Vector3Field("Scale Offset", settings.scaleOffset);
+        settings.rotationOffset = EditorGUILayout.Vector3Field("Rotation Offset", settings.rotationOffset);
+        settings.numberOfInstances = EditorGUILayout.IntField("Number of Instances", settings.numberOfInstances);
+
+        if (GUILayout.Button("Instantiate Prefabs"))
+        {
+            if (settings.prefabPool.Length > 0)
+            {
+                foreach (var prefab in settings.prefabPool)
+                {
+                    if (prefab != null)
+                    {
+                        // Call the instantiation function from the other script
+                        PrefabInstantiator.InstantiatePrefabs(prefab, settings.isRandomPosition, settings.scaleOffset, settings.rotationOffset, settings.positionOffset, settings.numberOfInstances);
+                    }
+                    else
+                    {
+                        Debug.LogError("Prefab in the list is not set!");
+                    }
+                }
+            }
+            else
+            {
+                Debug.LogError("Prefab list is empty!");
+            }
         }
     }
 
-    private void RandomizePrefabs()
+    private void AddPrefabToArray()
     {
-        PrefabRandomizer.Instance.Randomize(numberOfInstances, positionOffset, rotationOffset, scaleOffset);
+        int length = settings.prefabPool.Length;
+        GameObject[] newPrefabs = new GameObject[length + 1];
+        for (int i = 0; i < length; i++)
+        {
+            newPrefabs[i] = settings.prefabPool[i];
+        }
+        settings.prefabPool = newPrefabs;
+    }
+
+    private void RemoveLastPrefabFromArray()
+    {
+        int length = settings.prefabPool.Length;
+        if (length > 0)
+        {
+            GameObject[] newPrefabs = new GameObject[length - 1];
+            for (int i = 0; i < length - 1; i++)
+            {
+                newPrefabs[i] = settings.prefabPool[i];
+            }
+            settings.prefabPool = newPrefabs;
+        }
     }
 }
